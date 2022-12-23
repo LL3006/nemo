@@ -2094,6 +2094,23 @@ default_sort_in_reverse_order_changed_callback (gpointer callback_data)
 }
 
 static void
+sort_special_first_changed_callback (gpointer callback_data)
+{
+	NemoIconView *icon_view;
+	NemoIconContainer *icon_container;
+
+	g_return_if_fail (NEMO_IS_ICON_VIEW (callback_data));
+
+	icon_view = NEMO_ICON_VIEW (callback_data);
+
+	icon_container = get_icon_container (icon_view);
+	g_return_if_fail (NEMO_IS_ICON_CONTAINER (icon_container));
+
+	nemo_icon_container_request_update_all (icon_container);
+}
+
+
+static void
 default_zoom_level_changed_callback (gpointer callback_data)
 {
 	NemoIconView *icon_view;
@@ -2635,6 +2652,10 @@ nemo_icon_view_constructed (GObject *object)
     g_signal_connect_swapped (nemo_preferences,
                   "changed::" NEMO_PREFERENCES_DEFAULT_SORT_IN_REVERSE_ORDER,
                   G_CALLBACK (default_sort_in_reverse_order_changed_callback),
+                  icon_view);
+	g_signal_connect_swapped (nemo_preferences,
+                  "changed::" NEMO_PREFERENCES_SORT_SPECIAL_FIRST,
+                  G_CALLBACK (sort_special_first_changed_callback),
                   icon_view);
     g_signal_connect_swapped (nemo_preferences,
                   "changed::" NEMO_PREFERENCES_SHOW_IMAGE_FILE_THUMBNAILS,

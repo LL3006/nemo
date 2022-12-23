@@ -94,9 +94,9 @@
 #define DEBUG_REF_PRINTF printf
 #endif
 
-/* Files that start with these characters sort after files that don't. */
-#define SORT_LAST_CHAR1 '.'
-#define SORT_LAST_CHAR2 '#'
+/* Files that start with these characters sort before/after files that don't. */
+#define SORT_SPECIAL_CHAR1 '.'
+#define SORT_SPECIAL_CHAR2 '#'
 
 /* Name of Nemo trash directories */
 #define TRASH_DIRECTORY_NAME ".Trash"
@@ -3050,19 +3050,22 @@ compare_by_display_name (NemoFile *file_1, NemoFile *file_2)
 {
 	const char *name_1, *name_2;
 	const char *key_1, *key_2;
-	gboolean sort_last_1, sort_last_2;
+	gboolean sort_special_1, sort_special_2;
+	gboolean preferences_sort_before;
 	int compare=0;
 
+	preferences_sort_before = g_settings_get_boolean (nemo_preferences, NEMO_PREFERENCES_SORT_SPECIAL_FIRST);
 	name_1 = nemo_file_peek_display_name (file_1);
 	name_2 = nemo_file_peek_display_name (file_2);
 
-	sort_last_1 = name_1 && (name_1[0] == SORT_LAST_CHAR1 || name_1[0] == SORT_LAST_CHAR2);
-	sort_last_2 = name_2 && (name_2[0] == SORT_LAST_CHAR1 || name_2[0] == SORT_LAST_CHAR2);
+	sort_special_1 = name_1 && (name_1[0] == SORT_SPECIAL_CHAR1 || name_1[0] == SORT_SPECIAL_CHAR2);
+	sort_special_2 = name_2 && (name_2[0] == SORT_SPECIAL_CHAR1 || name_2[0] == SORT_SPECIAL_CHAR2);
 
-	if (sort_last_1 && !sort_last_2) {
-		compare = +1;
-	} else if (!sort_last_1 && sort_last_2) {
-		compare = -1;
+
+	if (sort_special_1 && !sort_special_2) {
+		compare = preferences_sort_before ? -1 : +1;
+	} else if (!sort_special_1 && sort_special_2) {
+		compare = preferences_sort_before ? +1 : -1;
 	} else if (name_1 == NULL || name_2 == NULL) {
         if (name_1 && !name_2)
             compare = +1;

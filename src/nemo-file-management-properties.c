@@ -57,6 +57,7 @@
 #define NEMO_FILE_MANAGEMENT_PROPERTIES_SIZE_PREFIXES_WIDGET "size_prefixes_combobox"
 
 /* bool preferences */
+#define NEMO_FILE_MANAGEMENT_PROPERTIES_SPECIAL_FIRST_WIDGET "sort_special_first_checkbutton"
 #define NEMO_FILE_MANAGEMENT_PROPERTIES_INHERIT_VIEW_WIDGET "inherit_view_checkbox"
 #define NEMO_FILE_MANAGEMENT_PROPERTIES_REVERSE_SORT_WIDGET "reverse_sort_checkbox"
 #define NEMO_FILE_MANAGEMENT_QUICK_RENAMES_WITH_PAUSE_IN_BETWEEN "quick_renames_with_pause_in_between"
@@ -945,6 +946,9 @@ nemo_file_management_properties_dialog_setup (GtkBuilder  *builder,
   bind_builder_bool (builder, nemo_preferences,
 			   NEMO_FILE_MANAGEMENT_PROPERTIES_INHERIT_VIEW_WIDGET,
 			   NEMO_PREFERENCES_INHERIT_FOLDER_VIEWER);
+  bind_builder_bool (builder, nemo_preferences,
+               NEMO_FILE_MANAGEMENT_PROPERTIES_SPECIAL_FIRST_WIDGET,
+               NEMO_PREFERENCES_SORT_SPECIAL_FIRST);
   bind_builder_bool (builder, nemo_preferences,
                NEMO_FILE_MANAGEMENT_PROPERTIES_REVERSE_SORT_WIDGET,
                NEMO_PREFERENCES_DEFAULT_SORT_IN_REVERSE_ORDER);
