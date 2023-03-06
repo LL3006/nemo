@@ -633,8 +633,10 @@ nemo_drag_default_drop_action_for_icons (GdkDragContext *context,
 			*action = gdk_drag_context_get_suggested_action (context);
 		}
 	} else {
-		if (actions & GDK_ACTION_COPY) {
-			*action = GDK_ACTION_COPY;
+		
+		/* SIKE! Now move is default  */
+		if (actions & GDK_ACTION_MOVE) {
+			*action = GDK_ACTION_MOVE;
 		} else {
 			*action = gdk_drag_context_get_suggested_action (context);
 		}
