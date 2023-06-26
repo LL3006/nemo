@@ -168,6 +168,7 @@ enum {
 	SELECTION_CHANGED,
 	TRASH,
 	DELETE,
+    SHOW_DROP_BAR,
 	LAST_SIGNAL
 };
 
@@ -3251,9 +3252,10 @@ nemo_view_display_selection_info (NemoView *view)
 		status_string = g_strdup (view_status_string);
 	}
 
-	nemo_window_slot_set_status (view->details->slot,
-					 status_string,
-					 view_status_string);
+    nemo_window_slot_set_status (view->details->slot,
+                                 status_string,
+                                 view_status_string,
+                                 view->details->loading);
 
 	g_free (status_string);
 	g_free (view_status_string);
@@ -6814,7 +6816,7 @@ copy_or_cut_files (NemoView *view,
 	}
 
 	nemo_window_slot_set_status (view->details->slot,
-					 status_string, NULL);
+					 status_string, NULL, FALSE);
 	g_free (status_string);
 }
 
@@ -7041,7 +7043,8 @@ paste_clipboard_data (NemoView *view,
 	if (item_uris == NULL|| destination_uri == NULL) {
 		nemo_window_slot_set_status (view->details->slot,
 						 _("There is nothing on the clipboard to paste."),
-						 NULL);
+						 NULL,
+                         FALSE);
 	} else {
 		nemo_view_move_copy_items (view, item_uris, NULL, destination_uri,
 					       cut ? GDK_ACTION_MOVE : GDK_ACTION_COPY,
@@ -10353,7 +10356,7 @@ nemo_view_notify_selection_changed (NemoView *view)
     if (view->details->display_selection_idle_id != 0) {
         g_source_remove (view->details->display_selection_idle_id);
         view->details->display_selection_idle_id = 0;
-        nemo_window_slot_set_status (view->details->slot, "", "");
+        nemo_window_slot_set_status (view->details->slot, "", "", view->details->loading);
     }
     view->details->display_selection_idle_id = g_timeout_add (100,
                                                               display_selection_info_idle_callback,
@@ -11185,6 +11188,14 @@ nemo_view_class_init (NemoViewClass *klass)
 			      g_signal_accumulator_true_handled, NULL,
 			      g_cclosure_marshal_generic,
 			      G_TYPE_BOOLEAN, 0);
+    signals[SHOW_DROP_BAR] =
+        g_signal_new ("show-drop-bar",
+                  G_TYPE_FROM_CLASS (klass),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
 	klass->get_selected_icon_locations = real_get_selected_icon_locations;
 	klass->is_read_only = real_is_read_only;

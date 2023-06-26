@@ -65,7 +65,8 @@
 #include <libnemo-private/nemo-debug.h>
 
 #define EXPANDER_PAD_COLUMN_WIDTH 4
-#define EJECT_COLUMN_WIDTH 22
+#define EJECT_COLUMN_MIN_WIDTH 22
+#define EJECT_COLUMN_MAX_WIDTH 60
 #define DRAG_EXPAND_CATEGORY_DELAY 500
 #define EJECT_PAD_COLUMN_WIDTH 14
 
@@ -1167,6 +1168,7 @@ update_places (NemoPlacesSidebar *sidebar)
 
         mount = g_volume_get_mount (volume);
         if (mount != NULL) {
+            g_autofree gchar *parse_name = NULL;
             icon = nemo_get_mount_icon_name (mount);
             root = g_mount_get_default_location (mount);
             mount_uri = g_file_get_uri (root);
@@ -1175,9 +1177,9 @@ update_places (NemoPlacesSidebar *sidebar)
             full = get_disk_full (df_file, &tooltip_info);
             g_clear_object (&df_file);
 
-            tooltip = g_strdup_printf (_("%s\n%s"),
-                                       g_file_get_parse_name (root),
-                                       tooltip_info);
+            parse_name = g_file_get_parse_name (root);
+            tooltip = g_strdup_printf (_("%s\n%s"), parse_name, tooltip_info);
+
             g_free (tooltip_info);
             g_object_unref (root);
             name = g_mount_get_name (mount);
@@ -4231,6 +4233,7 @@ nemo_places_sidebar_init (NemoPlacesSidebar *sidebar)
 
 	/* eject text renderer */
 	cell = nemo_cell_renderer_disk_new ();
+    NEMO_CELL_RENDERER_DISK (cell)->direction = gtk_widget_get_direction (GTK_WIDGET (tree_view));
 	gtk_tree_view_column_pack_start (col, cell, TRUE);
 	gtk_tree_view_column_set_attributes (col, cell,
 					     "text", PLACES_SIDEBAR_COLUMN_NAME,
@@ -4256,8 +4259,29 @@ nemo_places_sidebar_init (NemoPlacesSidebar *sidebar)
 					     "icon-name", PLACES_SIDEBAR_COLUMN_EJECT_ICON,
 					     NULL);
 
+    gboolean overlay_scrolling;
+    GtkSettings *gtksettings = gtk_settings_get_default ();
+    g_object_get (gtksettings,
+                  "gtk-overlay-scrolling", &overlay_scrolling,
+                  NULL);
+
+    if (overlay_scrolling) {
+        /* eject icon padding */
+        cell = gtk_cell_renderer_text_new ();
+        gtk_tree_view_column_pack_start (eject_col, cell, FALSE);
+        gtk_tree_view_column_set_attributes (eject_col, cell,
+                                             "visible", PLACES_SIDEBAR_COLUMN_EJECT,
+                                             NULL);
+        GtkWidget *vscrollbar = gtk_scrolled_window_get_vscrollbar (GTK_SCROLLED_WINDOW (sidebar));
+        gint nat_width;
+
+        gtk_widget_get_preferred_width (vscrollbar, NULL, &nat_width);
+        g_object_set (cell, "width", nat_width, NULL);
+    }
+
 	/* normal text renderer */
 	cell = nemo_cell_renderer_disk_new ();
+    NEMO_CELL_RENDERER_DISK (cell)->direction = gtk_widget_get_direction (GTK_WIDGET (tree_view));
 	gtk_tree_view_column_pack_start (col, cell, TRUE);
 	g_object_set (G_OBJECT (cell), "editable", FALSE, NULL);
 	gtk_tree_view_column_set_attributes (col, cell,
@@ -4289,8 +4313,9 @@ nemo_places_sidebar_init (NemoPlacesSidebar *sidebar)
     gtk_widget_style_get (GTK_WIDGET (tree_view), "expander-size", &expander_size, NULL);
     gtk_tree_view_column_set_fixed_width (expander_col, expander_size);
 
-    gtk_tree_view_column_set_sizing (eject_col, GTK_TREE_VIEW_COLUMN_FIXED);
-    gtk_tree_view_column_set_fixed_width (eject_col, EJECT_COLUMN_WIDTH);
+    gtk_tree_view_column_set_sizing (eject_col, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
+    gtk_tree_view_column_set_min_width (eject_col, EJECT_COLUMN_MIN_WIDTH);
+    gtk_tree_view_column_set_max_width (eject_col, EJECT_COLUMN_MAX_WIDTH);
 
     gtk_tree_view_column_set_expand (col, TRUE);
 

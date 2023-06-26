@@ -1,7 +1,7 @@
 # Meson build file
 
 # https://github.com/linuxmint/nemo
-project('nemo', 'c', version: '5.6.1-ll3006',
+project('nemo', 'c', version: '5.8.3-ll3006',
   meson_version: '>=0.41.0'
 )
 
@@ -90,7 +90,10 @@ tracker_enabled = false
 if trackerChoice != 'false'
   trackerRequired = (trackerChoice == 'true')
   # Check all the possible versions
+    tracker_sparql = dependency('tracker-sparql-3.0',  required: false)
+  if not tracker_sparql.found()
     tracker_sparql = dependency('tracker-sparql-2.0',  required: false)
+  endif
   if not tracker_sparql.found()
     tracker_sparql = dependency('tracker-sparql-1.0',  required: false)
   endif

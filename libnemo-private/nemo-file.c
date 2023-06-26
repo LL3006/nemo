@@ -255,29 +255,29 @@ nemo_file_set_display_name (NemoFile *file,
 
 	changed = FALSE;
 
-	if (g_strcmp0 (eel_ref_str_peek (file->details->display_name), display_name) != 0) {
+	if (g_strcmp0 (file->details->display_name, display_name) != 0) {
 		changed = TRUE;
 
-		eel_ref_str_unref (file->details->display_name);
+        g_clear_pointer (&file->details->display_name, g_ref_string_release);
 
-		if (g_strcmp0 (eel_ref_str_peek (file->details->name), display_name) == 0) {
-			file->details->display_name = eel_ref_str_ref (file->details->name);
+		if (g_strcmp0 (file->details->name, display_name) == 0) {
+			file->details->display_name = g_ref_string_acquire (file->details->name);
 		} else {
-			file->details->display_name = eel_ref_str_new (display_name);
+			file->details->display_name = g_ref_string_new (display_name);
 		}
 
 		g_free (file->details->display_name_collation_key);
 		file->details->display_name_collation_key = g_utf8_collate_key_for_filename (display_name, -1);
 	}
 
-	if (g_strcmp0 (eel_ref_str_peek (file->details->edit_name), edit_name) != 0) {
+	if (g_strcmp0 (file->details->edit_name, edit_name) != 0) {
 		changed = TRUE;
 
-		eel_ref_str_unref (file->details->edit_name);
-		if (g_strcmp0 (eel_ref_str_peek (file->details->display_name), edit_name) == 0) {
-			file->details->edit_name = eel_ref_str_ref (file->details->display_name);
+        g_clear_pointer (&file->details->edit_name, g_ref_string_release);
+		if (g_strcmp0 (file->details->display_name, edit_name) == 0) {
+			file->details->edit_name = g_ref_string_acquire (file->details->display_name);
 		} else {
-			file->details->edit_name = eel_ref_str_new (edit_name);
+			file->details->edit_name = g_ref_string_new (edit_name);
 		}
 	}
 
@@ -288,12 +288,9 @@ nemo_file_set_display_name (NemoFile *file,
 static void
 nemo_file_clear_display_name (NemoFile *file)
 {
-	eel_ref_str_unref (file->details->display_name);
-	file->details->display_name = NULL;
-	g_free (file->details->display_name_collation_key);
-	file->details->display_name_collation_key = NULL;
-	eel_ref_str_unref (file->details->edit_name);
-	file->details->edit_name = NULL;
+    g_clear_pointer (&file->details->display_name, g_ref_string_release);
+    g_clear_pointer (&file->details->display_name_collation_key, g_free);
+    g_clear_pointer (&file->details->edit_name, g_ref_string_release);
 }
 
 static gboolean
@@ -472,7 +469,6 @@ nemo_file_clear_info (NemoFile *file)
 	g_free (file->details->thumbnail_path);
 	file->details->thumbnail_path = NULL;
 	file->details->thumbnailing_failed = FALSE;
-    file->details->thumbnail_throttle_count = 1;
     file->details->last_thumbnail_try_mtime = 0;
 
 	file->details->is_launcher = FALSE;
@@ -510,21 +506,13 @@ nemo_file_clear_info (NemoFile *file)
     file->details->load_deferred_attrs = NEMO_FILE_LOAD_DEFERRED_ATTRS_NO;
 	g_free (file->details->symlink_name);
 	file->details->symlink_name = NULL;
-	eel_ref_str_unref (file->details->mime_type);
-	file->details->mime_type = NULL;
-	g_free (file->details->selinux_context);
-	file->details->selinux_context = NULL;
-	g_free (file->details->description);
-	file->details->description = NULL;
-	eel_ref_str_unref (file->details->owner);
-	file->details->owner = NULL;
-	eel_ref_str_unref (file->details->owner_real);
-	file->details->owner_real = NULL;
-	eel_ref_str_unref (file->details->group);
-	file->details->group = NULL;
-
-	eel_ref_str_unref (file->details->filesystem_id);
-	file->details->filesystem_id = NULL;
+    g_clear_pointer (&file->details->mime_type, g_ref_string_release);
+    g_clear_pointer (&file->details->selinux_context, g_free);
+    g_clear_pointer (&file->details->description, g_free);
+    g_clear_pointer (&file->details->owner, g_ref_string_release);
+    g_clear_pointer (&file->details->owner_real, g_ref_string_release);
+    g_clear_pointer (&file->details->group, g_ref_string_release);
+    g_clear_pointer (&file->details->filesystem_id, g_ref_string_release);
 
     file->details->is_desktop_orphan = FALSE;
 
@@ -566,7 +554,7 @@ nemo_file_new_from_filename (NemoDirectory *directory,
 
 	file->details->directory = nemo_directory_ref (directory);
 
-	file->details->name = eel_ref_str_new (filename);
+	file->details->name = g_ref_string_new (filename);
 
 #ifdef NEMO_FILE_DEBUG_REF
 	DEBUG_REF_PRINTF("%10p ref'd\n", file);
@@ -822,19 +810,19 @@ finalize (GObject *object)
 	}
 
 	nemo_directory_unref (directory);
-	eel_ref_str_unref (file->details->name);
-	eel_ref_str_unref (file->details->display_name);
+	g_clear_pointer (&file->details->name, g_ref_string_release);
+	g_clear_pointer (&file->details->display_name, g_ref_string_release);
 	g_free (file->details->display_name_collation_key);
-	eel_ref_str_unref (file->details->edit_name);
+	g_clear_pointer (&file->details->edit_name, g_ref_string_release);
 	if (file->details->icon) {
 		g_object_unref (file->details->icon);
 	}
 	g_free (file->details->thumbnail_path);
 	g_free (file->details->symlink_name);
-	eel_ref_str_unref (file->details->mime_type);
-	eel_ref_str_unref (file->details->owner);
-	eel_ref_str_unref (file->details->owner_real);
-	eel_ref_str_unref (file->details->group);
+	g_clear_pointer (&file->details->mime_type, g_ref_string_release);
+	g_clear_pointer (&file->details->owner, g_ref_string_release);
+	g_clear_pointer (&file->details->owner_real, g_ref_string_release);
+	g_clear_pointer (&file->details->group, g_ref_string_release);
 	g_free (file->details->selinux_context);
 	g_free (file->details->description);
 	g_free (file->details->activation_uri);
@@ -847,7 +835,7 @@ finalize (GObject *object)
 		g_object_unref (file->details->mount);
 	}
 
-	eel_ref_str_unref (file->details->filesystem_id);
+	g_clear_pointer (&file->details->filesystem_id, g_ref_string_release);
 	g_free (file->details->trash_orig_path);
 
 	g_list_free_full (file->details->mime_list, g_free);
@@ -1497,7 +1485,7 @@ nemo_file_is_desktop_directory (NemoFile *file)
 		return FALSE;
 	}
 
-	return nemo_is_desktop_directory_file (dir, eel_ref_str_peek (file->details->name));
+	return nemo_is_desktop_directory_file (dir, file->details->name);
 }
 
 static gboolean
@@ -1622,7 +1610,7 @@ nemo_file_get_location (NemoFile *file)
 		return g_object_ref (dir);
 	}
 
-	return g_file_get_child (dir, eel_ref_str_peek (file->details->name));
+	return g_file_get_child (dir, file->details->name);
 }
 
 /* Return the actual uri associated with the passed-in file. */
@@ -1637,6 +1625,41 @@ nemo_file_get_uri (NemoFile *file)
 	loc = nemo_file_get_location (file);
 	uri = g_file_get_uri (loc);
 	g_object_unref (loc);
+
+	return uri;
+}
+
+
+/* Return the local uri associated with the passed-in file.
+ * If the local uri can't be resolved, the uri from nemo_file_get_uri
+ * is returned instead.
+ */
+char *
+nemo_file_get_local_uri (NemoFile *file)
+{
+	char *uri, *path;
+	GFile *loc;
+
+	g_return_val_if_fail (NEMO_IS_FILE (file), NULL);
+
+    if (NEMO_IS_DESKTOP_ICON_FILE (file)) {
+        return nemo_file_get_uri (file);
+    }
+
+	if (file->details->activation_uri != NULL) {
+		return g_strdup (file->details->activation_uri);
+	}
+
+	loc = nemo_file_get_location (file);
+	path = g_file_get_path (loc);
+	g_object_unref (loc);
+
+	if (path == NULL) {
+		return nemo_file_get_uri (file);
+	}
+
+	uri = g_filename_to_uri (path, NULL, NULL);
+	g_free (path);
 
 	return uri;
 }
@@ -1793,7 +1816,7 @@ rename_get_info_callback (GObject *source_object,
 		}
 
 		old_uri = nemo_file_get_uri (op->file);
-		old_name = g_strdup (eel_ref_str_peek (op->file->details->name));
+		old_name = g_strdup (op->file->details->name);
 
 		update_info_and_name (op->file, new_info);
 
@@ -1863,9 +1886,7 @@ rename_callback (GObject *source_object,
 static gboolean
 name_is (NemoFile *file, const char *new_name)
 {
-	const char *old_name;
-	old_name = eel_ref_str_peek (file->details->name);
-	return strcmp (new_name, old_name) == 0;
+    return strcmp (new_name, file->details->name) == 0;
 }
 
 void
@@ -2274,6 +2295,7 @@ update_info_internal (NemoFile *file,
 	const char *trash_orig_path;
 	const char *group, *owner, *owner_real;
 	gboolean free_owner, free_group;
+    const char *edit_name;
 
 	if (file->details->is_gone) {
 		return FALSE;
@@ -2304,9 +2326,11 @@ update_info_internal (NemoFile *file,
 	}
 	file->details->got_file_info = TRUE;
 
+    edit_name = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_EDIT_NAME);
+
 	changed |= nemo_file_set_display_name (file,
 						  g_file_info_get_display_name (info),
-						  g_file_info_get_edit_name (info),
+						  edit_name,
 						  FALSE);
 
 	file_type = g_file_info_get_file_type (info);
@@ -2339,13 +2363,15 @@ update_info_internal (NemoFile *file,
 		}
 	}
 
-	is_symlink = g_file_info_get_is_symlink (info);
+    is_symlink = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
 	if (file->details->is_symlink != is_symlink) {
 		changed = TRUE;
 	}
 	file->details->is_symlink = is_symlink;
 
-	is_hidden = g_file_info_get_is_hidden (info) || g_file_info_get_is_backup (info);
+    is_hidden = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) ||
+                g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP);
+
 	if (file->details->is_hidden != is_hidden) {
 		changed = TRUE;
 	}
@@ -2507,22 +2533,22 @@ update_info_internal (NemoFile *file,
 	file->details->uid = uid;
 	file->details->gid = gid;
 
-	if (g_strcmp0 (eel_ref_str_peek (file->details->owner), owner) != 0) {
+	if (g_strcmp0 (file->details->owner, owner) != 0) {
 		changed = TRUE;
-		eel_ref_str_unref (file->details->owner);
-		file->details->owner = eel_ref_str_get_unique (owner);
+		g_clear_pointer (&file->details->owner, g_ref_string_release);
+		file->details->owner = g_ref_string_new_intern (owner);
 	}
 
-	if (g_strcmp0 (eel_ref_str_peek (file->details->owner_real), owner_real) != 0) {
+	if (g_strcmp0 (file->details->owner_real, owner_real) != 0) {
 		changed = TRUE;
-		eel_ref_str_unref (file->details->owner_real);
-		file->details->owner_real = eel_ref_str_get_unique (owner_real);
+        g_clear_pointer (&file->details->owner_real, g_ref_string_release);
+		file->details->owner_real = g_ref_string_new_intern (owner_real);
 	}
 
-	if (g_strcmp0 (eel_ref_str_peek (file->details->group), group) != 0) {
+	if (g_strcmp0 (file->details->group, group) != 0) {
 		changed = TRUE;
-		eel_ref_str_unref (file->details->group);
-		file->details->group = eel_ref_str_get_unique (group);
+        g_clear_pointer (&file->details->group, g_ref_string_release);
+		file->details->group = g_ref_string_new_intern (group);
 	}
 
 	if (free_owner) {
@@ -2541,7 +2567,8 @@ update_info_internal (NemoFile *file,
 	}
 	file->details->size = size;
 
-	sort_order = g_file_info_get_sort_order (info);
+    sort_order = g_file_info_get_attribute_int32 (info, G_FILE_ATTRIBUTE_STANDARD_SORT_ORDER);
+
 	if (file->details->sort_order != sort_order) {
 		changed = TRUE;
 	}
@@ -2603,9 +2630,8 @@ update_info_internal (NemoFile *file,
 		file->details->thumbnailing_failed = thumbnailing_failed;
 	}
 
-	symlink_name = is_symlink ?
-		g_file_info_get_symlink_target (info) :
-		NULL;
+    symlink_name = g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
+
 	if (g_strcmp0 (file->details->symlink_name, symlink_name) != 0) {
 		changed = TRUE;
 		g_free (file->details->symlink_name);
@@ -2627,10 +2653,10 @@ update_info_internal (NemoFile *file,
 	}
 
 	filesystem_id = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_ID_FILESYSTEM);
-	if (g_strcmp0 (eel_ref_str_peek (file->details->filesystem_id), filesystem_id) != 0) {
+	if (g_strcmp0 (file->details->filesystem_id, filesystem_id) != 0) {
 		changed = TRUE;
-		eel_ref_str_unref (file->details->filesystem_id);
-		file->details->filesystem_id = eel_ref_str_get_unique (filesystem_id);
+        g_clear_pointer (&file->details->filesystem_id, g_ref_string_release);
+		file->details->filesystem_id = g_ref_string_new_intern (filesystem_id);
 	}
 
 	trash_time = 0;
@@ -2657,18 +2683,17 @@ update_info_internal (NemoFile *file,
 	if (update_name) {
 		name = g_file_info_get_name (info);
 		if (file->details->name == NULL ||
-		    strcmp (eel_ref_str_peek (file->details->name), name) != 0) {
+		    strcmp (file->details->name, name) != 0) {
 			changed = TRUE;
 
 			node = nemo_directory_begin_file_name_change
 				(file->details->directory, file);
 
-			eel_ref_str_unref (file->details->name);
-			if (g_strcmp0 (eel_ref_str_peek (file->details->display_name),
-				       name) == 0) {
-				file->details->name = eel_ref_str_ref (file->details->display_name);
+            g_clear_pointer (&file->details->name, g_ref_string_release);
+			if (g_strcmp0 (file->details->display_name, name) == 0) {
+				file->details->name = g_ref_string_acquire (file->details->display_name);
 			} else {
-				file->details->name = eel_ref_str_new (name);
+				file->details->name = g_ref_string_new (name);
 			}
 
 			if (!file->details->got_custom_display_name &&
@@ -2687,11 +2712,13 @@ update_info_internal (NemoFile *file,
 
     mime_type = nemo_get_best_guess_file_mimetype (file->details->name, info, size);
 
-    if (g_strcmp0 (eel_ref_str_peek (file->details->mime_type), eel_ref_str_peek (mime_type)) != 0) {
+    if (g_strcmp0 (file->details->mime_type, mime_type) != 0) {
         changed = TRUE;
-        eel_ref_str_unref (file->details->mime_type);
-        file->details->mime_type = mime_type;
+        g_clear_pointer (&file->details->mime_type, g_ref_string_release);
+        file->details->mime_type = g_ref_string_new (mime_type);
     }
+
+    g_free (mime_type);
 
 	if (changed) {
 		add_to_link_hash_table (file);
@@ -2739,8 +2766,8 @@ update_name_internal (NemoFile *file,
 			(file->details->directory, file);
 	}
 
-	eel_ref_str_unref (file->details->name);
-	file->details->name = eel_ref_str_new (name);
+    g_clear_pointer (&file->details->name, g_ref_string_release);
+	file->details->name = g_ref_string_new (name);
 
 	if (!file->details->got_custom_display_name) {
 		nemo_file_clear_display_name (file);
@@ -3628,8 +3655,7 @@ nemo_file_is_home (NemoFile *file)
 		return FALSE;
 	}
 
-	return nemo_is_home_directory_file (dir,
-						eel_ref_str_peek (file->details->name));
+	return nemo_is_home_directory_file (dir, file->details->name);
 }
 
 gboolean
@@ -4058,7 +4084,7 @@ nemo_file_peek_display_name (NemoFile *file)
 	/* Default to display name based on filename if its not set yet */
 
 	if (file->details->display_name == NULL) {
-		name = eel_ref_str_peek (file->details->name);
+		name = file->details->name;
 		if (g_utf8_validate (name, -1, NULL)) {
 			nemo_file_set_display_name (file,
 							name,
@@ -4074,7 +4100,7 @@ nemo_file_peek_display_name (NemoFile *file)
 		}
 	}
 
-	return eel_ref_str_peek (file->details->display_name);
+	return file->details->display_name;
 }
 
 char *
@@ -4088,7 +4114,7 @@ nemo_file_get_edit_name (NemoFile *file)
 {
 	const char *res;
 
-	res = eel_ref_str_peek (file->details->edit_name);
+	res = file->details->edit_name;
 	if (res == NULL)
 		res = "";
 
@@ -4104,7 +4130,7 @@ nemo_file_peek_name (NemoFile *file)
 char *
 nemo_file_get_name (NemoFile *file)
 {
-	return g_strdup (eel_ref_str_peek (file->details->name));
+	return g_strdup (file->details->name);
 }
 
 /**
@@ -4359,7 +4385,7 @@ gboolean
 nemo_file_should_show_thumbnail (NemoFile *file)
 {
 	GFilesystemPreviewType use_preview;
-    NemoFile *dir;
+    NemoFile *dir = NULL;
     char* metadata_str = NULL;
 
     if (!NEMO_IS_FILE (file)) {
@@ -4383,32 +4409,46 @@ nemo_file_should_show_thumbnail (NemoFile *file)
     }
 
     if (!nemo_global_preferences_get_ignore_view_metadata ()) {
-        dir = nemo_file_is_directory(file) ? file : nemo_file_get_parent(file);
+        if (nemo_file_is_directory (file)) {
+            dir = nemo_file_ref (file);
+        } else {
+            dir = nemo_file_get_parent (file);
+        }
+
         if (nemo_global_preferences_get_inherit_show_thumbnails_preference ()) {
+            NemoFile *tmp = NULL;
+
             while (dir != NULL) {
                 metadata_str = nemo_file_get_metadata(dir,
                                                     NEMO_METADATA_KEY_SHOW_THUMBNAILS,
                                                     NULL);
                 if (metadata_str == NULL) { // do this here to avoid string comparisons with a NULL string
-                    dir = nemo_file_get_parent(dir);
+                    tmp = nemo_file_get_parent (dir);
+                    nemo_file_unref (dir);
+                    dir = tmp;
                 }
                 else if (g_ascii_strcasecmp (metadata_str, "true") == 0) {
                     g_free(metadata_str);
+                    nemo_file_unref (dir);
                     return TRUE;
                 }
                 else if (g_ascii_strcasecmp (metadata_str, "false") == 0) {
                     g_free(metadata_str);
+                    nemo_file_unref (dir);
                     return FALSE;
                 }
                 else {
                     g_free(metadata_str);
-                    dir = nemo_file_get_parent(dir);
+                    tmp = nemo_file_get_parent (dir);
+                    nemo_file_unref (dir);
+                    dir = tmp;
                 }
             }
         } else {
-            metadata_str = nemo_file_get_metadata(dir,
-                                                NEMO_METADATA_KEY_SHOW_THUMBNAILS,
-                                                NULL);
+            metadata_str = nemo_file_get_metadata (dir,
+                                                   NEMO_METADATA_KEY_SHOW_THUMBNAILS,
+                                                   NULL);
+            nemo_file_unref (dir);
             if (metadata_str != NULL ) {
                 if (g_ascii_strcasecmp (metadata_str, "true") == 0) {
                     g_free(metadata_str);
@@ -4813,24 +4853,6 @@ nemo_file_set_is_favorite (NemoFile *file,
     g_free (uri);
 }
 
-static gint
-get_throttle_count (NemoFile *file)
-{
-    NemoFileDetails *details = file->details;
-
-    gint diff = (gint)(details->mtime - details->last_thumbnail_try_mtime);
-
-    if (diff != 0 && diff <= (THUMBNAIL_CREATION_DELAY_SECS * (details->thumbnail_throttle_count + 1))) {
-        details->thumbnail_throttle_count++;
-    } else {
-        details->thumbnail_throttle_count = 1;
-    }
-
-    details->last_thumbnail_try_mtime = details->mtime;
-
-    return details->thumbnail_throttle_count;
-}
-
 NemoIconInfo *
 nemo_file_get_icon (NemoFile *file,
 			int size,
@@ -4907,8 +4929,8 @@ nemo_file_get_icon (NemoFile *file,
                                                      MAX (h * thumb_scale, 1),
                                                      GDK_INTERP_BILINEAR);
 
-            /* We don't want frames around small icons */
-            if (!gdk_pixbuf_get_has_alpha (raw_pixbuf) || s >= 128 * scale) {
+            /* Only apply frame if icon has no transparency, and is large enough */
+            if (!gdk_pixbuf_get_has_alpha (raw_pixbuf) && s >= 128 * scale) {
                 nemo_thumbnail_frame_image (&scaled_pixbuf);
             }
 
@@ -4948,7 +4970,7 @@ nemo_file_get_icon (NemoFile *file,
 			   !file->details->is_thumbnailing &&
 			   !file->details->thumbnailing_failed) {
 			if (nemo_can_thumbnail (file)) {
-				nemo_create_thumbnail (file, get_throttle_count (file), TRUE);
+				nemo_create_thumbnail (file);
 			}
 		}
 	}
@@ -5307,7 +5329,7 @@ nemo_file_should_show_directory_item_count (NemoFile *file)
 	g_return_val_if_fail (NEMO_IS_FILE (file), FALSE);
 
 	if (file->details->mime_type &&
-	    strcmp (eel_ref_str_peek (file->details->mime_type), "x-directory/smb-share") == 0) {
+	    strcmp (file->details->mime_type, "x-directory/smb-share") == 0) {
 		return FALSE;
 	}
 
@@ -5710,10 +5732,12 @@ nemo_file_set_permissions (NemoFile *file,
 
 	if (!nemo_file_undo_manager_pop_flag ()) {
 		NemoFileUndoInfo *undo_info;
+        GFile *location = nemo_file_get_location (file);
 
-		undo_info = nemo_file_undo_info_permissions_new (nemo_file_get_location (file),
+		undo_info = nemo_file_undo_info_permissions_new (location,
 								     file->details->permissions,
 								     new_permissions);
+        g_object_unref (location);
 		nemo_file_undo_manager_set_action (undo_info);
 	}
 
@@ -6023,16 +6047,17 @@ nemo_file_set_owner (NemoFile *file,
 
 	if (!nemo_file_undo_manager_pop_flag ()) {
 		NemoFileUndoInfo *undo_info;
+        GFile *location = nemo_file_get_location (file);
 		char* current_owner;
 
 		current_owner = nemo_file_get_owner_as_string (file, FALSE);
 
 		undo_info = nemo_file_undo_info_ownership_new (NEMO_FILE_UNDO_OP_CHANGE_OWNER,
-								   nemo_file_get_location (file),
+								   location,
 								   current_owner,
 								   user_name_or_id);
 		nemo_file_undo_manager_set_action (undo_info);
-
+        g_object_unref (location);
 		g_free (current_owner);
 	}
 
@@ -6108,7 +6133,7 @@ nemo_file_can_get_group (NemoFile *file)
 char *
 nemo_file_get_group_name (NemoFile *file)
 {
-	return g_strdup (eel_ref_str_peek (file->details->group));
+	return g_strdup (file->details->group);
 }
 
 /**
@@ -6301,15 +6326,16 @@ nemo_file_set_group (NemoFile *file,
 
 	if (!nemo_file_undo_manager_pop_flag ()) {
 		NemoFileUndoInfo *undo_info;
+        GFile *location = nemo_file_get_location (file);
 		char *current_group;
 
 		current_group = nemo_file_get_group_name (file);
 		undo_info = nemo_file_undo_info_ownership_new (NEMO_FILE_UNDO_OP_CHANGE_GROUP,
-								   nemo_file_get_location (file),
+								   location,
 								   current_group,
 								   group_name_or_id);
 		nemo_file_undo_manager_set_action (undo_info);
-
+        g_object_unref (location);
 		g_free (current_group);
 	}
 
@@ -6421,16 +6447,16 @@ nemo_file_get_owner_as_string (NemoFile *file, gboolean include_real_name)
 	}
 
 	if (file->details->owner_real == NULL) {
-		user_name = g_strdup (eel_ref_str_peek (file->details->owner));
+		user_name = g_strdup (file->details->owner);
 	} else if (file->details->owner == NULL) {
-		user_name = g_strdup (eel_ref_str_peek (file->details->owner_real));
+		user_name = g_strdup (file->details->owner_real);
 	} else if (include_real_name &&
-		   strcmp (eel_ref_str_peek (file->details->owner), eel_ref_str_peek (file->details->owner_real)) != 0) {
+		   strcmp (file->details->owner, file->details->owner_real) != 0) {
 		user_name = g_strdup_printf ("%s - %s",
-					     eel_ref_str_peek (file->details->owner),
-					     eel_ref_str_peek (file->details->owner_real));
+					     file->details->owner,
+					     file->details->owner_real);
 	} else {
-		user_name = g_strdup (eel_ref_str_peek (file->details->owner));
+		user_name = g_strdup (file->details->owner);
 	}
 
 	return user_name;
@@ -7014,7 +7040,7 @@ get_description (NemoFile     *file,
 
     g_assert (NEMO_IS_FILE (file));
 
-    mime_type = eel_ref_str_peek (file->details->mime_type);
+    mime_type = file->details->mime_type;
 
     if (mime_type == NULL) {
         return NULL;
@@ -7139,7 +7165,7 @@ nemo_file_get_mime_type (NemoFile *file)
 	if (file != NULL) {
 		g_return_val_if_fail (NEMO_IS_FILE (file), NULL);
 		if (file->details->mime_type != NULL) {
-			return g_strdup (eel_ref_str_peek (file->details->mime_type));
+			return g_strdup (file->details->mime_type);
 		}
 	}
 	return g_strdup ("application/octet-stream");
@@ -7166,8 +7192,7 @@ nemo_file_is_mime_type (NemoFile *file, const char *mime_type)
 	if (file->details->mime_type == NULL) {
 		return FALSE;
 	}
-	return g_content_type_is_a (eel_ref_str_peek (file->details->mime_type),
-				    mime_type);
+	return g_content_type_is_a (file->details->mime_type, mime_type);
 }
 
 gboolean
@@ -7178,7 +7203,7 @@ nemo_file_is_launchable (NemoFile *file)
 	type_can_be_executable = FALSE;
 	if (file->details->mime_type != NULL) {
 		type_can_be_executable =
-			g_content_type_can_be_executable (eel_ref_str_peek (file->details->mime_type));
+			g_content_type_can_be_executable (file->details->mime_type);
 	}
 
 	return type_can_be_executable &&
@@ -7544,8 +7569,7 @@ nemo_file_is_nemo_link (NemoFile *file)
 	if (file->details->mime_type == NULL) {
 		return FALSE;
 	}
-	return g_content_type_equals (eel_ref_str_peek (file->details->mime_type),
-				      "application/x-desktop");
+	return g_content_type_equals (file->details->mime_type, "application/x-desktop");
 }
 
 /**
@@ -7815,7 +7839,7 @@ nemo_file_is_executable (NemoFile *file)
 char *
 nemo_file_get_filesystem_id (NemoFile *file)
 {
-	return g_strdup (eel_ref_str_peek (file->details->filesystem_id));
+	return g_strdup (file->details->filesystem_id);
 }
 
 NemoFile *
@@ -9042,24 +9066,27 @@ nemo_file_add_string_attribute (NemoFile *file,
 	nemo_file_changed (file);
 }
 
-void
-nemo_file_add_search_result_data (NemoFile      *file,
-                                  gpointer       search_dir,
-                                  GPtrArray     *search_hits)
+gboolean
+nemo_file_add_search_result_data (NemoFile         *file,
+                                  gpointer          search_dir,
+                                  FileSearchResult *result)
 {
     if (file->details->search_results == NULL) {
         file->details->search_results = g_hash_table_new_full (NULL, NULL,
-                                                               NULL, (GDestroyNotify) g_ptr_array_unref);
+                                                               NULL, (GDestroyNotify) file_search_result_free);
     }
 
     if (!g_hash_table_replace (file->details->search_results,
                                search_dir,
-                               g_ptr_array_ref (search_hits))) {
+                               result)) {
 
 #ifndef ENABLE_TRACKER // this is abnormal only in -advanced search.
         g_warning ("Search hits directory already existed - %s", nemo_file_peek_name (file));
 #endif
+        return FALSE;
     }
+
+    return  TRUE;
 }
 
 void
@@ -9080,8 +9107,8 @@ nemo_file_clear_search_result_data (NemoFile      *file,
     }
 }
 
-static GPtrArray *
-get_file_hit_list (NemoFile *file, gpointer search_dir)
+static FileSearchResult*
+get_file_search_result (NemoFile *file, gpointer search_dir)
 {
     if (file->details->search_results == NULL) {
         return NULL;
@@ -9090,13 +9117,19 @@ get_file_hit_list (NemoFile *file, gpointer search_dir)
     return g_hash_table_lookup (file->details->search_results, search_dir);
 }
 
+gboolean
+nemo_file_has_search_result (NemoFile *file, gpointer search_dir)
+{
+    return g_hash_table_contains (file->details->search_results, search_dir);
+}
+
 gint
 nemo_file_get_search_result_count (NemoFile *file, gpointer search_dir)
 {
-    GPtrArray *hit_list = get_file_hit_list (file, search_dir);
+    FileSearchResult *result = get_file_search_result (file, search_dir);
 
-    if (hit_list != NULL) {
-        return hit_list->len;
+    if (result != NULL) {
+        return result->hits;
     }
 
     return 0;
@@ -9117,11 +9150,10 @@ nemo_file_get_search_result_count_as_string (NemoFile *file, gpointer search_dir
 gchar *
 nemo_file_get_search_result_snippet (NemoFile *file, gpointer search_dir)
 {
-    GPtrArray *hit_list = get_file_hit_list (file, search_dir);
+    FileSearchResult *result = get_file_search_result (file, search_dir);
 
-    if (hit_list != NULL && hit_list->len > 0) {
-        SearchHit *hit = (SearchHit *) g_ptr_array_index (hit_list, 0);
-        return g_strdup (hit->snippet);
+    if (result != NULL) {
+        return g_strdup (result->snippet);
     }
 
     return NULL;

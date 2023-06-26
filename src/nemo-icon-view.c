@@ -1999,7 +1999,7 @@ get_icon_uri_callback (NemoIconContainer *container,
 	g_assert (NEMO_IS_FILE (file));
 	g_assert (NEMO_IS_ICON_VIEW (icon_view));
 
-	return nemo_file_get_uri (file);
+	return nemo_file_get_local_uri (file);
 }
 
 static char *
@@ -2256,7 +2256,6 @@ nemo_icon_view_update_click_to_rename_mode (NemoIconView *icon_view)
     nemo_icon_container_set_click_to_rename_enabled (icon_container,
                                                      enabled);
 }
-
 
 static gboolean
 get_stored_layout_timestamp (NemoIconContainer *container,
@@ -2851,7 +2850,7 @@ nemo_icon_view_supports_uri (const char *uri,
 		return TRUE;
 	}
 	if (g_str_has_prefix (uri, EEL_SEARCH_URI)) {
-		return TRUE;
+		return FALSE;
 	}
 
 	return FALSE;

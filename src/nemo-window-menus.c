@@ -1024,7 +1024,7 @@ action_icon_view_callback (GtkAction *action,
     window = NEMO_WINDOW (user_data);
 
     set_content_view_type (window, NEMO_ICON_VIEW_ID);
-    toolbar_set_view_button (ICON_VIEW, nemo_window_get_active_pane(window));
+    toolbar_set_view_button (ICON_VIEW, nemo_window_get_active_pane(window), NULL);
 }
 
 
@@ -1037,7 +1037,7 @@ action_list_view_callback (GtkAction *action,
     window = NEMO_WINDOW (user_data);
 
     set_content_view_type (window, NEMO_LIST_VIEW_ID);
-    toolbar_set_view_button (LIST_VIEW, nemo_window_get_active_pane(window));
+    toolbar_set_view_button (LIST_VIEW, nemo_window_get_active_pane(window), NULL);
 }
 
 
@@ -1050,7 +1050,7 @@ action_compact_view_callback (GtkAction *action,
     window = NEMO_WINDOW (user_data);
 
     set_content_view_type (window, FM_COMPACT_VIEW_ID);
-    toolbar_set_view_button (COMPACT_VIEW, nemo_window_get_active_pane(window));
+    toolbar_set_view_button (COMPACT_VIEW, nemo_window_get_active_pane(window), NULL);
 }
 
 guint
@@ -1068,7 +1068,7 @@ action_for_view_id (const char *view_id)
 }
 
 void
-toolbar_set_view_button (guint action_id, NemoWindowPane *pane)
+toolbar_set_view_button (guint action_id, NemoWindowPane *pane, NemoFile *file)
 {
     GtkAction *action, *action1, *action2;
     GtkActionGroup *action_group;
@@ -1121,6 +1121,14 @@ toolbar_set_view_button (guint action_id, NemoWindowPane *pane)
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action2), FALSE);
     } else {
         gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(action2), TRUE);
+    }
+
+    if (file != NULL) {
+        gboolean in_search = nemo_file_is_in_search (file);
+
+        gtk_action_set_sensitive (action, !in_search);
+        gtk_action_set_sensitive (action1, !in_search);
+        gtk_action_set_sensitive (action2, !in_search);
     }
 
     g_signal_handlers_unblock_matched (action,
@@ -1218,7 +1226,8 @@ toolbar_set_create_folder_button (gboolean value, NemoWindowPane *pane)
 
 void
 menu_set_view_selection (guint action_id,
-                         NemoWindow *window)
+                         NemoWindow *window,
+                         NemoFile   *file)
 {
     GtkAction *action;
 
@@ -1234,6 +1243,21 @@ menu_set_view_selection (guint action_id,
                                           NEMO_ACTION_ICON_VIEW);
 
     gtk_radio_action_set_current_value (GTK_RADIO_ACTION (action), action_id);
+
+    if (file != NULL) {
+        gboolean in_search = nemo_file_is_in_search (file);
+
+        gtk_action_set_sensitive (action, !in_search);
+
+        action = gtk_action_group_get_action (window->details->main_action_group,
+                                              NEMO_ACTION_LIST_VIEW);
+        gtk_action_set_sensitive (action, !in_search);
+
+        action = gtk_action_group_get_action (window->details->main_action_group,
+                                              NEMO_ACTION_COMPACT_VIEW);
+
+        gtk_action_set_sensitive (action, !in_search);
+    }
 
     g_signal_handlers_unblock_by_func (window->details->main_action_group,
                                        view_radio_entry_changed_cb,
@@ -1351,26 +1375,22 @@ action_open_terminal_callback(GtkAction *action, gpointer callback_data)
     g_object_unref (gfile);
 }
 
+#define NEMO_VIEW_MENUBAR_FILE_PATH                  "/MenuBar/File"
+
 static void
-file_menu_bar_item_activated (GtkAction *action, gpointer user_data)
+on_file_menu_show (GtkWidget *widget, gpointer user_data)
 {
     NemoWindow *window;
     NemoView *view;
 
     window = NEMO_WINDOW (user_data);
-
-    if (window->details->dynamic_menu_entries_current) {
-        return;
-    }
-
     view = get_current_view (window);
-    nemo_view_update_actions_and_extensions (view);
 
-    window->details->dynamic_menu_entries_current = TRUE;
+    nemo_view_update_actions_and_extensions (view);
 }
 
 static const GtkActionEntry main_entries[] = {
-  /* name, stock id, label */  { "File", NULL, N_("_File"), NULL, NULL, G_CALLBACK (file_menu_bar_item_activated) },
+  /* name, stock id, label */  { "File", NULL, N_("_File") },
   /* name, stock id, label */  { "Edit", NULL, N_("_Edit") },
   /* name, stock id, label */  { "View", NULL, N_("_View") },
   /* name, stock id, label */  { "Help", NULL, N_("_Help") },
@@ -1869,16 +1889,6 @@ nemo_window_initialize_actions (NemoWindow *window)
 			  NULL);
 }
 
-static void
-menu_bar_deactivated (GtkMenuShell *menu, gpointer user_data)
-{
-    NemoWindow *window;
-
-    window = NEMO_WINDOW (user_data);
-
-    window->details->dynamic_menu_entries_current = FALSE;
-}
-
 /**
  * nemo_window_initialize_menus
  *
@@ -1890,7 +1900,6 @@ nemo_window_initialize_menus (NemoWindow *window)
 {
 	GtkActionGroup *action_group;
 	GtkUIManager *ui_manager;
-    GtkWidget *menubar;
 	GtkAction *action;
       GtkAction *action_to_hide;
 	gint i;
@@ -2002,13 +2011,10 @@ nemo_window_initialize_menus (NemoWindow *window)
 	/* add the UI */
 	gtk_ui_manager_add_ui_from_resource (ui_manager, "/org/nemo/nemo-shell-ui.xml", NULL);
 
-    // window->details->menubar isn't set yet
-    menubar = gtk_ui_manager_get_widget (window->details->ui_manager, "/MenuBar");
-
-    g_signal_connect (menubar,
-                      "deactivate",
-                      G_CALLBACK (menu_bar_deactivated),
-                      window);
+    GtkWidget *menuitem, *submenu;
+    menuitem = gtk_ui_manager_get_widget (nemo_window_get_ui_manager (window), NEMO_VIEW_MENUBAR_FILE_PATH);
+    submenu = gtk_menu_item_get_submenu (GTK_MENU_ITEM (menuitem));
+    g_signal_connect (submenu, "show", G_CALLBACK (on_file_menu_show), window);
 
 	nemo_window_initialize_trash_icon_monitor (window);
 }
